@@ -1,0 +1,7 @@
+h1. About
+
+p. Simple concept of a now.js application, pretending to finally be a videogame about miners.
+
+h1. How To
+
+p. To start simply execute coffee mine.coffee and go to http://localhost:8080
