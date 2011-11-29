@@ -13,8 +13,12 @@ server.listen 8080
 NOW = require 'now'
 everyone = NOW.initialize server
 
-everyone.connected -> console.log("Joined: " + this.now.name)
-everyone.disconnected -> console.log("Left: " + this.now.name)
+everyone.connected -> 
+	everyone.now.updatePosition this.now.name, this.now.x, this.now.y
+	console.log("Joined: " + this.now.name)
+everyone.disconnected ->
+	everyone.now.updatePosition this.now.name, this.now.x, this.now.y
+	console.log("Left: " + this.now.name)
 
 everyone.now.move = 
 	(keyCode) -> 
