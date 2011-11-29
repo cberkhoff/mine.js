@@ -5,9 +5,7 @@ p. Simple concept of a now.js application, pretending to finally become a videog
 h1. How To
 
 p. To start simply execute 
-<pre>
-coffee mine.coffee 
-</pre>
+<pre>coffee mine.coffee</pre>
 
 and go to
 
