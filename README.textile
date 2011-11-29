@@ -2,6 +2,12 @@ h1. About
 
 p. Simple concept of a now.js application, pretending to finally become a videogame about miners.
 
+h1. Dependencies
+
+p. In order to play, you will need nowjs
+
+<pre>npm install now</pre>
+
 h1. How To
 
 p. To start simply execute 
