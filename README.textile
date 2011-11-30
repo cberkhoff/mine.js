@@ -4,14 +4,15 @@ p. Simple concept of a now.js application, pretending to finally become a videog
 
 h1. Dependencies
 
-p. In order to play, you will need nowjs
+p. In order to play, you will need nowjs and node-static
 
-<pre>npm install now</pre>
+<pre>npm install now
+npm install node-static</pre>
 
 h1. How To
 
 p. To start simply execute 
-<pre>coffee mine.coffee</pre>
+<pre>cake go</pre>
 
 and go to
 

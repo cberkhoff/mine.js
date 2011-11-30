@@ -1,14 +1,17 @@
-FS = require 'fs'
+port = 8080
 
+FS = require 'fs'
 HTTP = require 'http'
+PATH = require 'path'
+NODE_STATIC = require 'node-static'
+
+static_server = new NODE_STATIC.Server('./public')
 
 server = HTTP.createServer (req, res) ->
-	FS.readFile 'client.html', (err, data) ->
-		res.writeHead 200, {'Content-Type':'text/html'}
-		res.write data
-		res.end()
+	req.addListener 'end', ->
+		static_server.serve req, res
 
-server.listen 8080
+server.listen port
 
 NOW = require 'now'
 everyone = NOW.initialize server
