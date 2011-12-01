@@ -1,40 +1,35 @@
+fs         = require 'fs'
+http       = require 'http'
+path       = require 'path'
+nodeStatic = require 'node-static'
+now        = require 'now'
+
 class Mine
-	port = 8080
+	constructor: ->
+		port    = 8080
+		@server = @createServer()
+		@server.listen port
 
-	FS = require 'fs'
-	HTTP = require 'http'
-	PATH = require 'path'
-	NODE_STATIC = require 'node-static'
+	createServer: ->
+		server = http.createServer (req, res) ->
+			req.addListener 'end', ->
+				staticServer = new nodeStatic.Server('./public')
+				staticServer.serve req, res
 
-	static_server = new NODE_STATIC.Server('./public')
+		server
 
-	server = HTTP.createServer (req, res) ->
-		req.addListener 'end', ->
-			static_server.serve req, res
+	init: ->
+		everyone = now.initialize @server
 
-	server.listen port
+		everyone.connected 		-> @now.updatePosition @now.name, @now.x, @now.y
+		everyone.disconnected -> @now.updatePosition @now.name, @now.x, @now.y
 
-	NOW = require 'now'
-	everyone = NOW.initialize server
-
-	everyone.connected ->
-		everyone.now.updatePosition this.now.name, this.now.x, this.now.y
-		console.log("Joined: " + this.now.name)
-	everyone.disconnected ->
-		everyone.now.updatePosition this.now.name, this.now.x, this.now.y
-		console.log("Left: " + this.now.name)
-
-	everyone.now.move =
-		(keyCode) ->
+		everyone.now.move = (keyCode) ->
 			switch keyCode
-				when 40
-					this.now.y++
-				when 38
-					this.now.y--
-				when 37
-					this.now.x--
-				when 39
-					this.now.x++
-			everyone.now.updatePosition this.now.name, this.now.x, this.now.y
+				when 37 then @now.x--
+				when 38 then @now.y--
+				when 39 then @now.x++
+				when 40 then @now.y++
+			@now.updatePosition @now.name, @now.x, @now.y
 
 module.exports = Mine
