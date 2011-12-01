@@ -4,10 +4,9 @@ p. Simple concept of a now.js application, pretending to finally become a videog
 
 h1. Dependencies
 
-p. In order to play, you will need nowjs and node-static
+p. Install all the dependencies by running
 
-<pre>npm install now
-npm install node-static</pre>
+<pre>npm install</pre>
 
 h1. How To
 
