@@ -1,4 +1,6 @@
 # Client-side Code
+canvas = $ 'main-viewport'
+context = canvas.getContext '2d'
 
 # Bind to socket events
 SS.socket.on 'disconnect', ->  $('#message').text('SocketStream server is down :-(')
