@@ -6,11 +6,14 @@ html(lang="en")
     title Welcome
   body
     #content
+      #left-sidebar
+        form#login
+          label Username:
+            input(id='username', type='text', name='username', size=10)
+          br
+          label Password:
+            input(id='password', type='password', name='password', size=10)
+          br
+          input(id='login-button', type='submit', value='Login')
+          
       #main-viewport
-      
-      // QUICK CHAT DEMO
-      form#demo(onsubmit='return false')
-        h3 Quick Chat Demo
-        h5 Open this page in multiple tabs or browsers and type a message below
-        #chatlog
-        input(id='myMessage', type='text', autocomplete='off')

@@ -10,6 +10,9 @@ $(document).keydown (k) ->
   if kc > 36 and kc < 41
     SS.server.app.broadcastMove(kc)
 
+$('loginButton').click () ->
+  
+
 # Bind to socket events
 SS.socket.on 'disconnect', ->
 SS.socket.on 'reconnect', ->   
