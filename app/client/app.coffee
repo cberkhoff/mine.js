@@ -6,9 +6,9 @@ $ ->
   circle.attr "stroke", "#fff"
 
 $(document).keydown (k) ->
-  ck = k.keyCode
-  if ck > 36 and ck < 41
-    SS.client.app.move(ck)
+  kc = k.keyCode
+  if kc > 36 and kc < 41
+    SS.server.app.broadcastMove(kc)
 
 # Bind to socket events
 SS.socket.on 'disconnect', ->
@@ -16,7 +16,8 @@ SS.socket.on 'reconnect', ->
 
 # This method is called automatically when the websocket connection is established. Do not rename/delete
 exports.init = ->
-  SS.events.on( 'newMessage', (m) -> alert(m))      
+  SS.events.on('updatePosition', (p) -> 
+    window.circle.animate({cy: p.y, cx: p.x}, 500))
 
 exports.move = (ck) ->
   SS.server.app.move(ck, (p) -> window.circle.animate({cy: p.y, cx: p.x},500))
