@@ -1,14 +1,20 @@
 # Server-side Code
+pos = {x: 100, y: 100}
+v = 40
 
 exports.actions =
-  
-  init: (cb) ->
-    cb "SocketStream version #{SS.version} is up and running. This message was sent over Socket.IO so everything is working OK."
 
-  # Quick Chat Demo
-  sendMessage: (message, cb) ->
-    if message.length > 0                             # Check for blank messages
-      SS.publish.broadcast 'newMessage', message      # Broadcast the message to everyone
-      cb true                                         # Confirm it was sent to the originating client
-    else
-      cb false
+  square: (number, cb) ->
+    cb(number * number)
+
+  move: (kc, cb) ->
+    switch kc
+      when 37 then pos.x -= v
+      when 38 then pos.y -= v
+      when 39 then pos.x += v
+      when 40 then pos.y += v
+    cb(pos)
+    
+
+  testMessage: (user_id) ->
+  	SS.publish.user(user_id, 'newMessage', 'mensaje penesaurio')
