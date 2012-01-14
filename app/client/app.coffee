@@ -4,19 +4,19 @@ $ ->
   window.circle = paper.circle 100, 100, 20
   circle.attr "fill", "#f00"
   circle.attr "stroke", "#fff"
+    
+  $('#login-button').click () ->
+    creds = {username: $('#username').val(), password: Sha256.hash $('#password').val()}
+    SS.server.app.authenticate creds, (auth_response) ->
+      if auth_response.success
+        $('#login').hide()
+      else
+        console.log auth_response.message
 
 $(document).keydown (k) ->
   kc = k.keyCode
   if kc > 36 and kc < 41
     SS.server.app.broadcastMove(kc)
-
-$('#login-button').click () ->
-  creds = {username: $('#username').val(), password: SS.shared.sha_256($('#password').val())}
-  SS.server.app.authenticate(creds)
-
-handle_login: (r) ->
-  $('#login').hide()
-  
 
 # Bind to socket events
 SS.socket.on 'disconnect', ->

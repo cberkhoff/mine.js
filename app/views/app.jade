@@ -12,10 +12,10 @@ html(lang="en")
           ul.inputs
             li.input
               label Username:
-              input(id='username', type='text', name='username', size=10)
+                input(id='username', type='text', name='username', size=10)
             li.input
               label Password:
-              input(id='password', type='password', name='password', size=10)
+                input(id='password', type='password', name='password', size=10)
             li.input
-              input(id='login-button', type='submit', value='Login')
-        p If your user doesn't exists, a new one will be created
+              a(href='#')#login-button Log me in!
+        #login-info If your user doesn't exists, a new one will be created

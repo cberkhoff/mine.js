@@ -1,10 +1,3 @@
-# Server-side Code
-rlog = (err, data) -> 
-  if err
-    console.log('error! '+err)
-  else
-    console.log('data '+data)
-
 #defaults
 v = 40
 pos = {x: 100, y: 100}
@@ -16,10 +9,12 @@ R.get 'pos', (err, d) ->
     console.log 'defining pos for the first time'
     R.set "pos", JSON.stringify pos
 
-exports.actions =    
+exports.actions =
 
   authenticate: (params, cb) ->
-    @session.authenticate 'custom_auth', params, (r)
+    @session.authenticate '/home/chris/workspace/mine.js/app/server/custom_auth', params, (auth_response) =>
+      @session.setUserId(auth_response.user_id) if auth_response.success
+      cb(auth_response)
 
   testMessage: (user_id) ->
   	SS.publish.user(user_id, 'newMessage', 'mensaje penesaurio')
