@@ -4,14 +4,33 @@ $ ->
   window.circle = paper.circle 100, 100, 20
   circle.attr "fill", "#f00"
   circle.attr "stroke", "#fff"
+
+  $('#login-error').hide()
+
+  login_error = (r) ->
+    $('#login-error').show()
+    $('#login-error').text(r.message)
+
+  login_successful = () ->
+    $('#login-error').hide()
+    $('#login').hide()
+
+  login_handler = (r) ->
+    if r.success
+        login_successful()
+      else
+        login_error r
     
   $('#login-button').click () ->
-    creds = {username: $('#username').val(), password: Sha256.hash $('#password').val()}
-    SS.server.app.authenticate creds, (auth_response) ->
-      if auth_response.success
-        $('#login').hide()
-      else
-        console.log auth_response.message
+    pass_validation = SS.shared.validations.password $('#password').val()
+    if pass_validation.success
+      creds = {username: $('#username').val(), password: Sha256.hash $('#password').val()}
+      SS.server.app.authenticate creds, (auth_response) -> 
+        login_handler auth_response
+    else
+      login_error pass_validation
+      
+        
 
 $(document).keydown (k) ->
   kc = k.keyCode
