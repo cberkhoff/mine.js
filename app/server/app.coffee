@@ -1,3 +1,5 @@
+path = require 'path'
+auth_module_path = path.resolve 'app/server/custom_auth'
 #defaults
 v = 40
 pos = {x: 100, y: 100}
@@ -12,7 +14,7 @@ R.get 'pos', (err, d) ->
 exports.actions =
 
   authenticate: (params, cb) ->
-    @session.authenticate '/home/chris/workspace/mine.js/app/server/custom_auth', params, (auth_response) =>
+    @session.authenticate auth_module_path, params, (auth_response) =>
       @session.setUserId(auth_response.user_id) if auth_response.success
       cb(auth_response)
 
