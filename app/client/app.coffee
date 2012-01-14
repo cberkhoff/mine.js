@@ -10,7 +10,12 @@ $(document).keydown (k) ->
   if kc > 36 and kc < 41
     SS.server.app.broadcastMove(kc)
 
-$('loginButton').click () ->
+$('#login-button').click () ->
+  creds = {username: $('#username').val(), password: SS.shared.sha_256($('#password').val())}
+  SS.server.app.authenticate(creds)
+
+handle_login: (r) ->
+  $('#login').hide()
   
 
 # Bind to socket events

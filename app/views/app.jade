@@ -6,14 +6,16 @@ html(lang="en")
     title Welcome
   body
     #content
-      #left-sidebar
-        form#login
-          label Username:
-            input(id='username', type='text', name='username', size=10)
-          br
-          label Password:
-            input(id='password', type='password', name='password', size=10)
-          br
-          input(id='login-button', type='submit', value='Login')
-          
       #main-viewport
+      #login.panel
+        form#login
+          ul.inputs
+            li.input
+              label Username:
+              input(id='username', type='text', name='username', size=10)
+            li.input
+              label Password:
+              input(id='password', type='password', name='password', size=10)
+            li.input
+              input(id='login-button', type='submit', value='Login')
+        p If your user doesn't exists, a new one will be created

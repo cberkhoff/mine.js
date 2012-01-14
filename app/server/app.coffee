@@ -9,20 +9,17 @@ rlog = (err, data) ->
 v = 40
 pos = {x: 100, y: 100}
 
-if R.hexists 'pos', 'x'
-
-R.hgetall 'pos', (err, d) -> 
+R.get 'pos', (err, d) -> 
   if d
-    pos.x = (Number) d.x
-    pos.y = (Number) d.y
+    pos = JSON.parse(d)
   else
     console.log 'defining pos for the first time'
-    R.hmset "pos", pos
+    R.set "pos", JSON.stringify pos
 
 exports.actions =    
 
-  #authenticate: (params, cb) ->
-    #@session.authenticate 'custom_auth', params, (r)
+  authenticate: (params, cb) ->
+    @session.authenticate 'custom_auth', params, (r)
 
   testMessage: (user_id) ->
   	SS.publish.user(user_id, 'newMessage', 'mensaje penesaurio')
@@ -33,5 +30,5 @@ exports.actions =
       when 38 then pos.y -= v
       when 39 then pos.x += v
       when 40 then pos.y += v
-    R.hmset 'pos', pos
+    R.set 'pos', JSON.stringify pos
     SS.publish.broadcast('updatePosition', pos)

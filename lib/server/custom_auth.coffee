@@ -1,5 +1,7 @@
 exports.authenticate = (username, password, cb) ->
-  if success
-    cb({success: true, user_id: 21323, info: {username: 'joebloggs'}})
-  else
-    cb({success: false, info: {num_retries: 2}})
+  R.get 'user:' + username,  (err, d) ->
+    if d
+      
+    else
+      R.set 'user:' + username, {username: username, password: password}
+      cb({status: "new", user_id: username})
