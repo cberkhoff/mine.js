@@ -1,8 +1,11 @@
 {
-  "name": "mine.js",
-  "version": "0.0.1",
+  "name": "Mine.js",
+  "description": "An awesome real time game",
+  "version": "0.1.0",
+  "author": "Christian Berkhoff <christian@berkhoff.cl>",
+  "private": true,
+  "engines": { "node": ">= 0.4.0 < 0.5.0" },
   "dependencies": {
-    "now":"",
-    "node-static":""
+    "socketstream": "~>0.2.0"
   }
 }

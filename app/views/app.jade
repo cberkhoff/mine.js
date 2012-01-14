@@ -1,0 +1,22 @@
+!!! 5
+html(lang="en")
+  head
+    != SocketStream
+    meta(charset="utf-8")
+    title Welcome
+  body
+    #content
+      #main-viewport
+      #login.panel
+        form#login
+          ul.inputs
+            li.input
+              label Username:
+                input(id='username', type='text', name='username', size=10)
+            li.input
+              label Password:
+                input(id='password', type='password', name='password', size=10)
+            li.input
+              a(href='#')#login-button Log me in!
+        p#login-info If your user doesn't exists, a new one will be created
+        p#login-error.error
