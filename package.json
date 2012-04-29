@@ -3,7 +3,6 @@
   "description": "An awesome real time game",
   "version": "0.1.0",
   "author": "Christian Berkhoff <christian@berkhoff.cl>",
-  "private": true,
   "engines": {
     "node": "0.6.x",
     "npm":  "1.0.x"
