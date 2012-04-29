@@ -13,4 +13,4 @@ app.configure ->
 app.get '/', (req, res) ->
   res.send 'Hello!'
 
-app.listen 3000
+app.listen process.env['app_port'] or 3000
