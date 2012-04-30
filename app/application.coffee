@@ -1,17 +1,28 @@
+Router = require 'lib/router'
+Miner = require 'views/miner'
+
 # The application bootstrapper.
-Application =
+class Application
   initialize: ->
-    HomeView = require 'views/home_view'
-    Router = require 'lib/router'
+    @paper = Raphael "canvas", 640, 480
 
     # Ideally, initialized classes should be kept in controllers & mediator.
     # If you're making big webapp, here's more sophisticated skeleton
     # https://github.com/paulmillr/brunch-with-chaplin
-    @homeView = new HomeView()
+
+    @players = []
 
     # Instantiate the router
     @router = new Router()
     # Freeze the object
     Object.freeze? this
 
-module.exports = Application
+  newPlayer: (name) ->
+    m = new Miner @paper
+    @players.push m
+    m.render()
+
+
+app = new Application
+
+module.exports = app

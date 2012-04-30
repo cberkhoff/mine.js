@@ -2,4 +2,6 @@ application = require 'application'
 
 $ ->
   application.initialize()
-  Backbone.history.start()
+
+  # If history exists
+  Backbone.history?.start()

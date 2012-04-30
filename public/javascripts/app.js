@@ -81,20 +81,37 @@
 (this.require.define({
   "application": function(exports, require, module) {
     (function() {
-  var Application;
+  var Application, Miner, Router, app;
 
-  Application = {
-    initialize: function() {
-      var HomeView, Router;
-      HomeView = require('views/home_view');
-      Router = require('lib/router');
-      this.homeView = new HomeView();
+  Router = require('lib/router');
+
+  Miner = require('views/miner');
+
+  Application = (function() {
+
+    function Application() {}
+
+    Application.prototype.initialize = function() {
+      this.paper = Raphael("canvas", 640, 480);
+      this.players = [];
       this.router = new Router();
       return typeof Object.freeze === "function" ? Object.freeze(this) : void 0;
-    }
-  };
+    };
 
-  module.exports = Application;
+    Application.prototype.newPlayer = function(name) {
+      var m;
+      m = new Miner(this.paper);
+      this.players.push(m);
+      return m.render();
+    };
+
+    return Application;
+
+  })();
+
+  app = new Application;
+
+  module.exports = app;
 
 }).call(this);
 
@@ -108,8 +125,9 @@
   application = require('application');
 
   $(function() {
+    var _ref;
     application.initialize();
-    return Backbone.history.start();
+    return (_ref = Backbone.history) != null ? _ref.start() : void 0;
   });
 
 }).call(this);
@@ -132,14 +150,6 @@
     function Router() {
       Router.__super__.constructor.apply(this, arguments);
     }
-
-    Router.prototype.routes = {
-      '': 'home'
-    };
-
-    Router.prototype.home = function() {
-      return $('body').html(application.homeView.render().el);
-    };
 
     return Router;
 
@@ -206,31 +216,63 @@
   }
 }));
 (this.require.define({
-  "views/home_view": function(exports, require, module) {
+  "views/canvas_view": function(exports, require, module) {
     (function() {
-  var HomeView, View, template,
+  var CanvasView, app,
     __hasProp = Object.prototype.hasOwnProperty,
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor; child.__super__ = parent.prototype; return child; };
 
-  View = require('./view');
+  require('lib/view_helper');
 
-  template = require('./templates/home');
+  app = require('application');
 
-  module.exports = HomeView = (function(_super) {
+  module.exports = CanvasView = (function(_super) {
 
-    __extends(HomeView, _super);
+    __extends(CanvasView, _super);
 
-    function HomeView() {
-      HomeView.__super__.constructor.apply(this, arguments);
+    function CanvasView(options) {
+      if (options == null) options = {};
+      CanvasView.__super__.constructor.call(this, options);
+      this.paper = app.paper;
     }
 
-    HomeView.prototype.id = 'home-view';
+    return CanvasView;
 
-    HomeView.prototype.template = template;
+  })(Backbone.View);
 
-    return HomeView;
+}).call(this);
 
-  })(View);
+  }
+}));
+(this.require.define({
+  "views/miner": function(exports, require, module) {
+    (function() {
+  var MinerView, app,
+    __hasProp = Object.prototype.hasOwnProperty,
+    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor; child.__super__ = parent.prototype; return child; };
+
+  app = require('application');
+
+  module.exports = MinerView = (function(_super) {
+
+    __extends(MinerView, _super);
+
+    function MinerView(options) {
+      if (options == null) options = {};
+      MinerView.__super__.constructor.call(this, options);
+      this.paper = app.paper;
+    }
+
+    return MinerView;
+
+  })(Backbone.View);
+
+  ({
+    render: function() {
+      this.circle = this.paper.circle(50, 40, 10);
+      return this.circle("fill", "#f00");
+    }
+  });
 
 }).call(this);
 
