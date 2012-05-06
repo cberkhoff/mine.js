@@ -81,13 +81,13 @@
 (this.require.define({
   "application": function(exports, require, module) {
     (function() {
-  var AirCell, Application, Cell, EarthCell, Grid, HardEarthCell, MetalCell, Miner, Position, Router, SoftEarthCell, app, cellSize, gridHeight, gridWidth, viewportHeight, viewportWidth,
+  var AirCell, Application, Cell, Directions, EarthCell, Grid, HardEarthCell, MetalCell, Miner, Position, Router, SoftEarthCell, World, app, cellSize, gridHeight, gridWidth, viewportHeight, viewportWidth,
     __hasProp = Object.prototype.hasOwnProperty,
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor; child.__super__ = parent.prototype; return child; };
 
   Router = require('lib/router');
 
-  gridWidth = 5;
+  gridWidth = 9;
 
   gridHeight = 6;
 
@@ -96,6 +96,19 @@
   viewportHeight = 7;
 
   cellSize = 40;
+
+  Directions = (function() {
+
+    function Directions(up, right, down, left) {
+      this.up = up;
+      this.right = right;
+      this.down = down;
+      this.left = left;
+    }
+
+    return Directions;
+
+  })();
 
   Position = (function() {
 
@@ -112,19 +125,47 @@
       return this.j * cellSize;
     };
 
+    Position.prototype.moveUp = function() {
+      return this.j--;
+    };
+
+    Position.prototype.moveDown = function() {
+      return this.j++;
+    };
+
+    Position.prototype.moveLeft = function() {
+      return this.i--;
+    };
+
+    Position.prototype.moveRight = function() {
+      return this.i++;
+    };
+
+    Position.prototype.move = function(dir) {
+      switch (dir) {
+        case 'up':
+          return this.moveUp();
+        case 'down':
+          return this.moveDown();
+        case 'left':
+          return this.moveLeft();
+        case 'right':
+          return this.moveRight();
+      }
+    };
+
     return Position;
 
   })();
 
   Cell = (function() {
 
-    function Cell(pos, paper) {
+    function Cell(pos) {
       this.pos = pos;
-      this.paper = paper;
     }
 
-    Cell.prototype.draw = function() {
-      return this.rect = this.paper.rect(this.pos.x(), this.pos.y(), cellSize, cellSize);
+    Cell.prototype.draw = function(paper) {
+      return this.rect = paper.rect(this.pos.x(), this.pos.y(), cellSize, cellSize);
     };
 
     return Cell;
@@ -139,9 +180,9 @@
       AirCell.__super__.constructor.apply(this, arguments);
     }
 
-    AirCell.prototype.draw = function() {
-      AirCell.__super__.draw.call(this);
-      return this.rect.attr('fill', '#C0E5E4');
+    AirCell.prototype.draw = function(paper) {
+      AirCell.__super__.draw.call(this, paper);
+      return this.rect.attr('fill', '#3090C7');
     };
 
     return AirCell;
@@ -156,8 +197,8 @@
       SoftEarthCell.__super__.constructor.apply(this, arguments);
     }
 
-    SoftEarthCell.prototype.draw = function() {
-      SoftEarthCell.__super__.draw.call(this);
+    SoftEarthCell.prototype.draw = function(paper) {
+      SoftEarthCell.__super__.draw.call(this, paper);
       return this.rect.attr('fill', '#B99B64');
     };
 
@@ -173,8 +214,8 @@
       EarthCell.__super__.constructor.apply(this, arguments);
     }
 
-    EarthCell.prototype.draw = function() {
-      EarthCell.__super__.draw.call(this);
+    EarthCell.prototype.draw = function(paper) {
+      EarthCell.__super__.draw.call(this, paper);
       return this.rect.attr('fill', '#9B8569');
     };
 
@@ -190,8 +231,8 @@
       HardEarthCell.__super__.constructor.apply(this, arguments);
     }
 
-    HardEarthCell.prototype.draw = function() {
-      HardEarthCell.__super__.draw.call(this);
+    HardEarthCell.prototype.draw = function(paper) {
+      HardEarthCell.__super__.draw.call(this, paper);
       return this.rect.attr('fill', '#786B66');
     };
 
@@ -207,8 +248,8 @@
       MetalCell.__super__.constructor.apply(this, arguments);
     }
 
-    MetalCell.prototype.draw = function() {
-      MetalCell.__super__.draw.call(this);
+    MetalCell.prototype.draw = function(paper) {
+      MetalCell.__super__.draw.call(this, paper);
       return this.rect.attr('fill', '#784F5F');
     };
 
@@ -218,10 +259,9 @@
 
   Grid = (function() {
 
-    function Grid(width, height, paper) {
+    function Grid(width, height) {
       this.width = width;
       this.height = height;
-      this.paper = paper;
       this.bounds = new Position(this.width, this.height);
       this.cells = [];
     }
@@ -237,29 +277,36 @@
       return pos.j * this.width + pos.i;
     };
 
+    Grid.prototype.near = function(pos) {
+      var k;
+      k = this.positionToIndex(pos);
+      return new Directions(this.cells[k - this.width], this.cells[k + 1], this.cells[k + this.width], this.cells[k - 1]);
+    };
+
     Grid.prototype.setCell = function(c) {
       return this.cells[this.positionToIndex(c.pos)] = c;
     };
 
     Grid.prototype.parse = function(grid) {
       var k, _ref, _results;
+      if (grid.length !== this.width * this.height) new Error('Invalid grid size');
       _results = [];
       for (k = 0, _ref = grid.length; 0 <= _ref ? k < _ref : k > _ref; 0 <= _ref ? k++ : k--) {
         switch (grid[k]) {
           case 'a':
-            _results.push(this.setCell(new AirCell(this.indexToPosition(k, this.paper))));
+            _results.push(this.setCell(new AirCell(this.indexToPosition(k))));
             break;
           case 's':
-            _results.push(this.setCell(new SoftEarthCell(this.indexToPosition(k, this.paper))));
+            _results.push(this.setCell(new SoftEarthCell(this.indexToPosition(k))));
             break;
           case 'e':
-            _results.push(this.setCell(new EarthCell(this.indexToPosition(k, this.paper))));
+            _results.push(this.setCell(new EarthCell(this.indexToPosition(k))));
             break;
           case 'h':
-            _results.push(this.setCell(new HardEarthCell(this.indexToPosition(k, this.paper))));
+            _results.push(this.setCell(new HardEarthCell(this.indexToPosition(k))));
             break;
           case 'm':
-            _results.push(this.setCell(new MetalCell(this.indexToPosition(k, this.paper))));
+            _results.push(this.setCell(new MetalCell(this.indexToPosition(k))));
             break;
           default:
             _results.push(void 0);
@@ -268,9 +315,10 @@
       return _results;
     };
 
-    Grid.prototype.draw = function() {
+    Grid.prototype.draw = function(paper) {
+      var _this = this;
       return this.cells.map(function(c) {
-        return c.draw;
+        return c.draw(paper);
       });
     };
 
@@ -280,52 +328,71 @@
 
   Miner = (function() {
 
-    function Miner(pos, paper) {
+    function Miner(pos, world) {
       this.pos = pos;
-      this.paper = paper;
-      this.draw();
+      this.world = world;
+      this.world.players.push(this);
+      this.acting = false;
     }
 
-    Miner.prototype.draw = function() {
-      var h;
-      h = cellSize / 2;
-      this.circle = this.paper.circle(this.pos.x() - h, this.pos.y() - h, h);
-      return this.circle.attr("fill", "#f00");
+    Miner.prototype.draw = function(paper) {
+      var a;
+      a = this.circleAttrs();
+      this.circle = paper.circle(a.x, a.y, a.h);
+      return this.circle.attr('fill', '#f00');
     };
 
-    Miner.prototype.drawMove = function(dir) {
-      var attr;
-      attr = this.circle.attr();
-      switch (dir) {
-        case 'up':
-          attr.cy -= cellSize;
-          break;
-        case 'down':
-          attr.cy += cellSize;
-          break;
-        case 'left':
-          attr.cx -= cellSize;
-          break;
-        case 'right':
-          attr.cx += cellSize;
+    Miner.prototype.circleAttrs = function() {
+      var h, v;
+      h = cellSize / 2;
+      return v = {
+        h: h,
+        x: this.pos.x() + h,
+        y: this.pos.y() + h
+      };
+    };
+
+    Miner.prototype.act = function(dir) {
+      var a, attr,
+        _this = this;
+      if (!this.acting) {
+        this.acting = true;
+        attr = this.circle.attr();
+        this.pos.move(dir);
+        a = this.circleAttrs();
+        attr.cx = a.x;
+        attr.cy = a.y;
+        return this.circle.animate(attr, 200, '<>', function() {
+          return _this.acting = false;
+        });
       }
-      return this.circle.animate(attr, 200);
     };
 
     Miner.prototype.handleKeydown = function(kc) {
       switch (kc) {
         case 38:
-          return this.drawMove('up');
+          return this.act('up');
         case 40:
-          return this.drawMove('down');
+          return this.act('down');
         case 37:
-          return this.drawMove('left');
+          return this.act('left');
         case 39:
-          return this.drawMove('right');
+          return this.act('right');
       }
     };
 
     return Miner;
+
+  })();
+
+  World = (function() {
+
+    function World(grid) {
+      this.grid = grid;
+      this.players = [];
+    }
+
+    return World;
 
   })();
 
@@ -336,20 +403,20 @@
     Application.prototype.player = void 0;
 
     Application.prototype.initialize = function() {
-      var grid, sample_grid, viewportBounds;
+      var sample_grid, viewportBounds;
       viewportBounds = new Position(viewportWidth, viewportHeight);
       this.paper = Raphael("canvas", viewportBounds.x(), viewportBounds.y());
-      grid = new Grid(gridWidth, gridHeight, this.paper);
-      sample_grid = ['a', 'a', 'a', 'a', 'a', 's', 's', 's', 's', 's', 'e', 'e', 's', 'h', 's', 'h', 'e', 'e', 'h', 'e', 'e', 'e', 'e', 'e', 'e', 'm', 'm', 'm', 'e', 'e'];
-      grid.parse(sample_grid);
-      console.log(grid.cells);
-      grid.draw();
+      this.world = new World(new Grid(gridWidth, gridHeight));
+      sample_grid = ['a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 's', 's', 's', 's', 's', 's', 's', 's', 's', 'e', 'e', 's', 'h', 's', 'e', 'h', 'h', 's', 'h', 'e', 'e', 'h', 'e', 'e', 'e', 'h', 'e', 'e', 'e', 'e', 'e', 'e', 'e', 'e', 'e', 'e', 'm', 'm', 'm', 'e', 'e', 'm', 'm', 'e', 'e', 'h', 'h', 'm', 'e', 'e', 'h', 'm', 'e', 'e'];
+      this.world.grid.parse(sample_grid);
+      this.world.grid.draw(this.paper);
       return this.joinGame();
     };
 
     Application.prototype.joinGame = function() {
       var _this = this;
-      this.player = new Miner(new Position(3, 2), this.paper);
+      this.player = new Miner(new Position(3, 0), this.world);
+      this.player.draw(this.paper);
       return $(document).keydown(function(kde) {
         return _this.player.handleKeydown(kde.keyCode);
       });
