@@ -1,7 +1,7 @@
 Router = require 'lib/router'
 
 gridWidth = 5
-gridHeight = 5
+gridHeight = 6
 viewportWidth = 9
 viewportHeight = 7
 cellSize = 40
@@ -57,7 +57,7 @@ class Grid
     new Position i, j
 
   positionToIndex: (pos) ->
-    pos.i * @width + pos.j
+    pos.j * @width + pos.i
 
   setCell: (c) ->
     @cells[@positionToIndex c.pos] = c

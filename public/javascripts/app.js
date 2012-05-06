@@ -89,7 +89,7 @@
 
   gridWidth = 5;
 
-  gridHeight = 5;
+  gridHeight = 6;
 
   viewportWidth = 9;
 
@@ -234,7 +234,7 @@
     };
 
     Grid.prototype.positionToIndex = function(pos) {
-      return pos.i * this.width + pos.j;
+      return pos.j * this.width + pos.i;
     };
 
     Grid.prototype.setCell = function(c) {
