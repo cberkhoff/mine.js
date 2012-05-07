@@ -81,9 +81,10 @@
 (this.require.define({
   "application": function(exports, require, module) {
     (function() {
-  var AirCell, Application, Cell, Directions, EarthCell, Grid, HardEarthCell, MetalCell, Miner, Position, Router, SoftEarthCell, World, app, cellSize, gridHeight, gridWidth, viewportHeight, viewportWidth,
+  var AirCell, Application, Cell, Directions, EarthCell, Grid, HardEarthCell, MetalCell, MineCell, Miner, Position, Router, SoftEarthCell, World, app, cellSize, gridHeight, gridWidth, viewportHeight, viewportWidth,
     __hasProp = Object.prototype.hasOwnProperty,
-    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor; child.__super__ = parent.prototype; return child; };
+    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor; child.__super__ = parent.prototype; return child; },
+    __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
 
   Router = require('lib/router');
 
@@ -105,6 +106,26 @@
       this.down = down;
       this.left = left;
     }
+
+    Directions.undef = function() {
+      return new Directions(void 0, void 0, void 0, void 0);
+    };
+
+    Directions.prototype.all = function() {
+      return {
+        up: this.up,
+        right: this.right,
+        down: this.down,
+        left: this.left
+      };
+    };
+
+    Directions.prototype.sides = function() {
+      return {
+        left: this.left,
+        right: this.right
+      };
+    };
 
     return Directions;
 
@@ -168,6 +189,12 @@
       return this.rect = paper.rect(this.pos.x(), this.pos.y(), cellSize, cellSize);
     };
 
+    Cell.prototype.diggable = function() {
+      return this.toughness > 0;
+    };
+
+    Cell.prototype.toughness = 0;
+
     return Cell;
 
   })();
@@ -185,7 +212,28 @@
       return this.rect.attr('fill', '#3090C7');
     };
 
+    AirCell.prototype.toughness = 0;
+
     return AirCell;
+
+  })(Cell);
+
+  MineCell = (function(_super) {
+
+    __extends(MineCell, _super);
+
+    function MineCell() {
+      MineCell.__super__.constructor.apply(this, arguments);
+    }
+
+    MineCell.prototype.draw = function(paper) {
+      MineCell.__super__.draw.call(this, paper);
+      return this.rect.attr('fill', '#391919');
+    };
+
+    MineCell.prototype.toughness = 0;
+
+    return MineCell;
 
   })(Cell);
 
@@ -201,6 +249,8 @@
       SoftEarthCell.__super__.draw.call(this, paper);
       return this.rect.attr('fill', '#B99B64');
     };
+
+    SoftEarthCell.prototype.toughness = 2;
 
     return SoftEarthCell;
 
@@ -219,6 +269,8 @@
       return this.rect.attr('fill', '#9B8569');
     };
 
+    EarthCell.prototype.toughness = 3;
+
     return EarthCell;
 
   })(Cell);
@@ -236,6 +288,8 @@
       return this.rect.attr('fill', '#786B66');
     };
 
+    HardEarthCell.prototype.toughness = 4;
+
     return HardEarthCell;
 
   })(Cell);
@@ -252,6 +306,8 @@
       MetalCell.__super__.draw.call(this, paper);
       return this.rect.attr('fill', '#784F5F');
     };
+
+    MetalCell.prototype.toughness = 5;
 
     return MetalCell;
 
@@ -287,12 +343,21 @@
       return this.cells[this.positionToIndex(c.pos)] = c;
     };
 
+    Grid.prototype.dig = function(c) {
+      var k;
+      k = this.positionToIndex(c.pos);
+      return this.cells[k] = new MineCell(k);
+    };
+
     Grid.prototype.parse = function(grid) {
       var k, _ref, _results;
       if (grid.length !== this.width * this.height) new Error('Invalid grid size');
       _results = [];
       for (k = 0, _ref = grid.length; 0 <= _ref ? k < _ref : k > _ref; 0 <= _ref ? k++ : k--) {
         switch (grid[k]) {
+          case '_':
+            _results.push(this.setCell(new MineCell(this.indexToPosition(k))));
+            break;
           case 'a':
             _results.push(this.setCell(new AirCell(this.indexToPosition(k))));
             break;
@@ -331,8 +396,11 @@
     function Miner(pos, world) {
       this.pos = pos;
       this.world = world;
+      this.postAct = __bind(this.postAct, this);
       this.world.players.push(this);
       this.acting = false;
+      this.availableActions = Directions.undef();
+      this.updateAvailableActions();
     }
 
     Miner.prototype.draw = function(paper) {
@@ -353,19 +421,62 @@
     };
 
     Miner.prototype.act = function(dir) {
-      var a, attr,
-        _this = this;
       if (!this.acting) {
         this.acting = true;
-        attr = this.circle.attr();
-        this.pos.move(dir);
-        a = this.circleAttrs();
-        attr.cx = a.x;
-        attr.cy = a.y;
-        return this.circle.animate(attr, 200, '<>', function() {
-          return _this.acting = false;
-        });
+        console.log(this.availableActions[dir]["do"]);
+        return this.availableActions[dir]["do"]();
       }
+    };
+
+    Miner.prototype.postAct = function() {
+      this.acting = false;
+      this.updateAvailableActions();
+      return console.log(this.availableActions);
+    };
+
+    Miner.prototype.updateAvailableActions = function() {
+      var cell, dir, nearCells, _ref, _results;
+      nearCells = this.world.grid.near(this.pos);
+      _ref = nearCells.all();
+      _results = [];
+      for (dir in _ref) {
+        cell = _ref[dir];
+        if (cell != null ? cell.diggable() : void 0) {
+          _results.push(this.availableActions[dir] = this.digAction(cell));
+        } else {
+          _results.push(this.availableActions[dir] = this.moveAction(cell));
+        }
+      }
+      return _results;
+    };
+
+    Miner.prototype.digAction = function(cell) {
+      var a,
+        _this = this;
+      return a = {
+        name: 'dig',
+        "do": function() {
+          _this.world.grid.dig(cell);
+          return _this.postAct();
+        }
+      };
+    };
+
+    Miner.prototype.moveAction = function(cell) {
+      var a,
+        _this = this;
+      return a = {
+        name: 'move',
+        "do": function() {
+          var attr;
+          attr = _this.circle.attr();
+          _this.pos.move(dir);
+          a = _this.circleAttrs();
+          attr.cx = a.x;
+          attr.cy = a.y;
+          return _this.circle.animate(attr, 200, '<>', _this.postAct);
+        }
+      };
     };
 
     Miner.prototype.handleKeydown = function(kc) {
@@ -407,7 +518,7 @@
       viewportBounds = new Position(viewportWidth, viewportHeight);
       this.paper = Raphael("canvas", viewportBounds.x(), viewportBounds.y());
       this.world = new World(new Grid(gridWidth, gridHeight));
-      sample_grid = ['a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 's', 's', 's', 's', 's', 's', 's', 's', 's', 'e', 'e', 's', 'h', 's', 'e', 'h', 'h', 's', 'h', 'e', 'e', 'h', 'e', 'e', 'e', 'h', 'e', 'e', 'e', 'e', 'e', 'e', 'e', 'e', 'e', 'e', 'm', 'm', 'm', 'e', 'e', 'm', 'm', 'e', 'e', 'h', 'h', 'm', 'e', 'e', 'h', 'm', 'e', 'e'];
+      sample_grid = ['a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 's', 's', 's', '_', 's', 's', 's', 's', 's', 'e', 'e', 's', '_', 's', 'e', 'h', 'h', 's', 'h', 'e', 'e', 'h', 'e', 'e', 'e', 'h', 'e', 'e', 'e', 'e', 'e', 'e', 'e', 'e', 'e', 'e', 'm', 'm', 'm', 'e', 'e', 'm', 'm', 'e', 'e', 'h', 'h', 'm', 'e', 'e', 'h', 'm', 'e', 'e'];
       this.world.grid.parse(sample_grid);
       this.world.grid.draw(this.paper);
       return this.joinGame();
@@ -415,7 +526,7 @@
 
     Application.prototype.joinGame = function() {
       var _this = this;
-      this.player = new Miner(new Position(3, 0), this.world);
+      this.player = new Miner(new Position(4, 0), this.world);
       this.player.draw(this.paper);
       return $(document).keydown(function(kde) {
         return _this.player.handleKeydown(kde.keyCode);
