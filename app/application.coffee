@@ -1,9 +1,9 @@
 Router = require 'lib/router'
 
 gridWidth = 9
-gridHeight = 6
+gridHeight = 7
 viewportWidth = 9
-viewportHeight = 7
+viewportHeight = 6
 cellSize = 40
 
 # looking upside down?
@@ -117,8 +117,11 @@ class MetalCell extends Cell
   toughness: 5
 
 class Grid
+  # undefined cells are just air
+  # width and height considering the first air row
   constructor: (@width, @height) ->
-    @bounds = new Position @width, @height
+    @bounds = new Position @width+1, @height+1
+    @sky = new Position @width+1, 1
     @cells = []
 
   indexToPosition: (k)->
@@ -133,24 +136,35 @@ class Grid
     k = @positionToIndex pos
     new Directions @cells[k-@width], @cells[k+1], @cells[k+@width], @cells[k-1]
 
-  setCell: (c) ->
+  set: (c) ->
     @cells[@positionToIndex c.pos] = c
 
-  dig: (c) ->
+  remove: (c) ->
     k = @positionToIndex c.pos
-    @cells[k] = new MineCell k 
+    unless @cells[k]
+      throw new Error "Cell #{k} id empty"
+
+    c.rect.remove()
+    @cells[k] = undefined
+
+    console.log "Digging #{k}"
 
   parse: (grid) ->
-    if grid.length isnt @width * @height
-      new Error 'Invalid grid size'
-    for k in [0...grid.length]
+    if grid.length isnt @width * (@height - 1)
+      throw new Error 'Invalid grid size (input doesnt need first air row)'
+
+    console.log "parsing #{grid.length} cells"
+
+    # First row is only air
+    init = @width
+    end = grid.length + @width
+
+    for k in [init...end]
       switch grid[k]
-        when '_' then @setCell new MineCell @indexToPosition k
-        when 'a' then @setCell new AirCell @indexToPosition k
-        when 's' then @setCell new SoftEarthCell @indexToPosition k
-        when 'e' then @setCell new EarthCell @indexToPosition k
-        when 'h' then @setCell new HardEarthCell @indexToPosition k
-        when 'm' then @setCell new MetalCell @indexToPosition k
+        when 's' then @set new SoftEarthCell @indexToPosition k
+        when 'e' then @set new EarthCell @indexToPosition k
+        when 'h' then @set new HardEarthCell @indexToPosition k
+        when 'm' then @set new MetalCell @indexToPosition k
 
   draw: (paper) ->
     @cells.map (c) =>
@@ -183,13 +197,12 @@ class Miner
     #ignore if another action is in progess
     unless @acting
       @acting = true
-      console.log @availableActions[dir].do
-      @availableActions[dir].do()
+      @availableActions[dir].do dir
 
   postAct: =>
     @acting = false
     @updateAvailableActions()
-    console.log @availableActions
+    #console.log @world.grid.near @pos
 
   updateAvailableActions: ->
     nearCells = @world.grid.near @pos
@@ -203,14 +216,14 @@ class Miner
   digAction: (cell) ->
     a =
       name: 'dig'
-      do: =>
-        @world.grid.dig cell
+      do: (dir) =>
+        @world.grid.remove cell
         @postAct()
 
   moveAction: (cell) ->
     a =
       name: 'move'
-      do: =>
+      do: (dir) =>
         attr = @circle.attr()
         @pos.move dir
         a = @circleAttrs()
@@ -232,6 +245,15 @@ class World
   constructor: (@grid) ->
     @players = []
 
+  draw: (paper) ->
+    @sky = paper.rect 0, 0, @grid.sky.x(), @grid.sky.y()
+    @sky.attr 'fill', '#3090C7'
+
+    @underground = paper.rect 0, @grid.sky.y(), @grid.bounds.x(), @grid.bounds.y()
+    @underground.attr 'fill', '#391919'
+
+    @grid.draw paper
+
 # The application bootstrapper.
 class Application
   player: undefined
@@ -242,16 +264,15 @@ class Application
 
     @world = new World new Grid gridWidth, gridHeight
     sample_grid = [
-      'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a'
       's', 's', 's', '_', 's', 's', 's', 's', 's'
       'e', 'e', 's', '_', 's', 'e', 'h', 'h', 's'
-      'h', 'e', 'e', 'h', 'e', 'e', 'e', 'h', 'e'
-      'e', 'e', 'e', 'e', 'e', 'e', 'e', 'e', 'e'
-      'm', 'm', 'm', 'e', 'e', 'm', 'm', 'e', 'e'
-      'h', 'h', 'm', 'e', 'e', 'h', 'm', 'e', 'e'
+      'h', 'e', 'e', '_', 'e', 'e', 'e', 'h', 'e'
+      'e', 'e', 'e', '_', 'e', 'e', 'e', 'e', 'e'
+      'm', 'm', 'm', '_', 'e', 'm', 'm', 'e', 'e'
+      'h', 'h', 'm', '_', 'e', 'h', 'm', 'e', 'e'
     ]
     @world.grid.parse sample_grid
-    @world.grid.draw @paper
+    @world.draw @paper
 
     #console.log @world.grid.cells[10]
     # hacer esto con un mapa que se note

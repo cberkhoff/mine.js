@@ -90,11 +90,11 @@
 
   gridWidth = 9;
 
-  gridHeight = 6;
+  gridHeight = 7;
 
   viewportWidth = 9;
 
-  viewportHeight = 7;
+  viewportHeight = 6;
 
   cellSize = 40;
 
@@ -318,7 +318,8 @@
     function Grid(width, height) {
       this.width = width;
       this.height = height;
-      this.bounds = new Position(this.width, this.height);
+      this.bounds = new Position(this.width + 1, this.height + 1);
+      this.sky = new Position(this.width + 1, 1);
       this.cells = [];
     }
 
@@ -339,39 +340,41 @@
       return new Directions(this.cells[k - this.width], this.cells[k + 1], this.cells[k + this.width], this.cells[k - 1]);
     };
 
-    Grid.prototype.setCell = function(c) {
+    Grid.prototype.set = function(c) {
       return this.cells[this.positionToIndex(c.pos)] = c;
     };
 
-    Grid.prototype.dig = function(c) {
+    Grid.prototype.remove = function(c) {
       var k;
       k = this.positionToIndex(c.pos);
-      return this.cells[k] = new MineCell(k);
+      if (!this.cells[k]) throw new Error("Cell " + k + " id empty");
+      c.rect.remove();
+      this.cells[k] = void 0;
+      return console.log("Digging " + k);
     };
 
     Grid.prototype.parse = function(grid) {
-      var k, _ref, _results;
-      if (grid.length !== this.width * this.height) new Error('Invalid grid size');
+      var end, init, k, _results;
+      if (grid.length !== this.width * (this.height - 1)) {
+        throw new Error('Invalid grid size (input doesnt need first air row)');
+      }
+      console.log("parsing " + grid.length + " cells");
+      init = this.width;
+      end = grid.length + this.width;
       _results = [];
-      for (k = 0, _ref = grid.length; 0 <= _ref ? k < _ref : k > _ref; 0 <= _ref ? k++ : k--) {
+      for (k = init; init <= end ? k < end : k > end; init <= end ? k++ : k--) {
         switch (grid[k]) {
-          case '_':
-            _results.push(this.setCell(new MineCell(this.indexToPosition(k))));
-            break;
-          case 'a':
-            _results.push(this.setCell(new AirCell(this.indexToPosition(k))));
-            break;
           case 's':
-            _results.push(this.setCell(new SoftEarthCell(this.indexToPosition(k))));
+            _results.push(this.set(new SoftEarthCell(this.indexToPosition(k))));
             break;
           case 'e':
-            _results.push(this.setCell(new EarthCell(this.indexToPosition(k))));
+            _results.push(this.set(new EarthCell(this.indexToPosition(k))));
             break;
           case 'h':
-            _results.push(this.setCell(new HardEarthCell(this.indexToPosition(k))));
+            _results.push(this.set(new HardEarthCell(this.indexToPosition(k))));
             break;
           case 'm':
-            _results.push(this.setCell(new MetalCell(this.indexToPosition(k))));
+            _results.push(this.set(new MetalCell(this.indexToPosition(k))));
             break;
           default:
             _results.push(void 0);
@@ -423,15 +426,13 @@
     Miner.prototype.act = function(dir) {
       if (!this.acting) {
         this.acting = true;
-        console.log(this.availableActions[dir]["do"]);
-        return this.availableActions[dir]["do"]();
+        return this.availableActions[dir]["do"](dir);
       }
     };
 
     Miner.prototype.postAct = function() {
       this.acting = false;
-      this.updateAvailableActions();
-      return console.log(this.availableActions);
+      return this.updateAvailableActions();
     };
 
     Miner.prototype.updateAvailableActions = function() {
@@ -455,8 +456,8 @@
         _this = this;
       return a = {
         name: 'dig',
-        "do": function() {
-          _this.world.grid.dig(cell);
+        "do": function(dir) {
+          _this.world.grid.remove(cell);
           return _this.postAct();
         }
       };
@@ -467,7 +468,7 @@
         _this = this;
       return a = {
         name: 'move',
-        "do": function() {
+        "do": function(dir) {
           var attr;
           attr = _this.circle.attr();
           _this.pos.move(dir);
@@ -503,6 +504,14 @@
       this.players = [];
     }
 
+    World.prototype.draw = function(paper) {
+      this.sky = paper.rect(0, 0, this.grid.sky.x(), this.grid.sky.y());
+      this.sky.attr('fill', '#3090C7');
+      this.underground = paper.rect(0, this.grid.sky.y(), this.grid.bounds.x(), this.grid.bounds.y());
+      this.underground.attr('fill', '#391919');
+      return this.grid.draw(paper);
+    };
+
     return World;
 
   })();
@@ -518,9 +527,9 @@
       viewportBounds = new Position(viewportWidth, viewportHeight);
       this.paper = Raphael("canvas", viewportBounds.x(), viewportBounds.y());
       this.world = new World(new Grid(gridWidth, gridHeight));
-      sample_grid = ['a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 's', 's', 's', '_', 's', 's', 's', 's', 's', 'e', 'e', 's', '_', 's', 'e', 'h', 'h', 's', 'h', 'e', 'e', 'h', 'e', 'e', 'e', 'h', 'e', 'e', 'e', 'e', 'e', 'e', 'e', 'e', 'e', 'e', 'm', 'm', 'm', 'e', 'e', 'm', 'm', 'e', 'e', 'h', 'h', 'm', 'e', 'e', 'h', 'm', 'e', 'e'];
+      sample_grid = ['s', 's', 's', '_', 's', 's', 's', 's', 's', 'e', 'e', 's', '_', 's', 'e', 'h', 'h', 's', 'h', 'e', 'e', '_', 'e', 'e', 'e', 'h', 'e', 'e', 'e', 'e', '_', 'e', 'e', 'e', 'e', 'e', 'm', 'm', 'm', '_', 'e', 'm', 'm', 'e', 'e', 'h', 'h', 'm', '_', 'e', 'h', 'm', 'e', 'e'];
       this.world.grid.parse(sample_grid);
-      this.world.grid.draw(this.paper);
+      this.world.draw(this.paper);
       return this.joinGame();
     };
 
