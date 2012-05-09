@@ -13,10 +13,13 @@ cellSize = 40
 # k is for indexes
 
 # todo
-# world has air & backgroun
+# available actions bug
+# add testing capabilities
+# world has bounds (create undiggable material)
+# refactor & frameworkike the actions, postactions, etc
 # dig removes cell
 # let cells in another file (with export namespace)
-# create shape object (which is drawable)
+# create shape object (which is drawable) in another file
 #  - miner uses a circle which has different attrs as a rect
 
 # tests
@@ -35,6 +38,7 @@ class Directions
     {left: @left, right: @right}
 
 # The position in the grid
+# Vector but inside the game
 class Position
   constructor: (@i, @j) ->
 
@@ -46,15 +50,30 @@ class Position
 
   moveUp: ->
     @j--
+    @
 
   moveDown: ->
     @j++
+    @
 
   moveLeft: ->
     @i--
+    @
 
   moveRight: ->
     @i++
+    @
+
+  down: ->
+    new Position @i, @j+1
+
+  straightDistance: (pos) ->
+    if @i is pos.i
+      Math.abs pos.j - @j
+    else if @j is pos.j
+      Math.abs pos.i - @i
+    else
+      throw new Error 'Cant measure diagonal distances'
 
   move: (dir) ->
     switch dir
@@ -132,12 +151,26 @@ class Grid
   positionToIndex: (pos) ->
     pos.j * @width + pos.i
 
+  up: (pos) ->
+    @cells[@positionToIndex(pos) - @width]
+
+  right: (pos) ->
+    @cells[@positionToIndex(pos)+1]
+
+  down: (pos) ->
+    @cells[@positionToIndex(pos) + @width]
+
+  left: (pos) ->
+    @cells[@positionToIndex(pos)-1]
+
   near: (pos) ->
-    k = @positionToIndex pos
-    new Directions @cells[k-@width], @cells[k+1], @cells[k+@width], @cells[k-1]
+    new Directions @up(pos), @right(pos), @down(pos), @left(pos)
 
   set: (c) ->
-    @cells[@positionToIndex c.pos] = c
+    @cells[@positionToIndex(c.pos)] = c
+
+  get: (pos) ->
+    @cells[@positionToIndex(pos)]
 
   remove: (c) ->
     k = @positionToIndex c.pos
@@ -148,6 +181,21 @@ class Grid
     @cells[k] = undefined
 
     console.log "Digging #{k}"
+
+  inside: (pos) ->
+    if 0 < pos.i < @width
+      if 0 < pos.j < @height
+        true
+    false
+
+  # finds the next solid surface (an empty cell above a defined cell) down
+  # from the given position.
+  # The result is therefor a Position!
+  surface: (pos) ->
+    if @down(pos)?
+      pos
+    else
+      @surface pos.down()
 
   parse: (grid) ->
     if grid.length isnt @width * (@height - 1)
@@ -175,6 +223,9 @@ class Miner
     # Register myself in the world
     @world.players.push @
 
+    # simple access var
+    @grid = @world.grid
+
     # Used to skip actions if currently performing another
     @acting = false
 
@@ -186,7 +237,7 @@ class Miner
     @circle = paper.circle a.x, a.y, a.h
     @circle.attr 'fill', '#f00'
 
-  circleAttrs: ->
+  circleAttrs: =>
     h = cellSize / 2
     v =
       h: h
@@ -194,30 +245,52 @@ class Miner
       y: @pos.y() + h
 
   act: (dir) ->
-    #ignore if another action is in progess
-    unless @acting
+    # ignore if: 
+    # - another action is in progess
+    # - no available action in that direction
+    unless @acting or not @availableActions[dir]?
       @acting = true
       @availableActions[dir].do dir
 
+  fall: (cb) =>
+    unless @grid.down(@pos)?
+      console.log "falling!"
+
+      attr = @circle.attr()
+
+      @pos = @grid.surface(@pos)
+      a = @circleAttrs()
+
+      attr.cx = a.x
+      attr.cy = a.y
+
+      @circle.animate attr, 200, 'bounce', cb()
+    cb()
+
+
   postAct: =>
-    @acting = false
-    @updateAvailableActions()
-    #console.log @world.grid.near @pos
+   @fall =>
+      @acting = false
+      @updateAvailableActions()
+      #console.log @availableActions
 
   updateAvailableActions: ->
-    nearCells = @world.grid.near @pos
+    @availableActions = Directions.undef()    
+    nearCells = @grid.near @pos
+    #console.log nearCells
 
     for dir, cell of nearCells.all()
       if cell?.diggable()
         @availableActions[dir] = @digAction cell
       else
-        @availableActions[dir] = @moveAction cell
+        if dir isnt 'up'
+          @availableActions[dir] = @moveAction cell
 
   digAction: (cell) ->
     a =
       name: 'dig'
       do: (dir) =>
-        @world.grid.remove cell
+        @grid.remove cell
         @postAct()
 
   moveAction: (cell) ->
@@ -269,7 +342,7 @@ class Application
       'h', 'e', 'e', '_', 'e', 'e', 'e', 'h', 'e'
       'e', 'e', 'e', '_', 'e', 'e', 'e', 'e', 'e'
       'm', 'm', 'm', '_', 'e', 'm', 'm', 'e', 'e'
-      'h', 'h', 'm', '_', 'e', 'h', 'm', 'e', 'e'
+      'h', 'h', 'm', 'm', 'e', 'h', 'm', 'e', 'e'
     ]
     @world.grid.parse sample_grid
     @world.draw @paper

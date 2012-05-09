@@ -147,19 +147,37 @@
     };
 
     Position.prototype.moveUp = function() {
-      return this.j--;
+      this.j--;
+      return this;
     };
 
     Position.prototype.moveDown = function() {
-      return this.j++;
+      this.j++;
+      return this;
     };
 
     Position.prototype.moveLeft = function() {
-      return this.i--;
+      this.i--;
+      return this;
     };
 
     Position.prototype.moveRight = function() {
-      return this.i++;
+      this.i++;
+      return this;
+    };
+
+    Position.prototype.down = function() {
+      return new Position(this.i, this.j + 1);
+    };
+
+    Position.prototype.straightDistance = function(pos) {
+      if (this.i === pos.i) {
+        return Math.abs(pos.j - this.j);
+      } else if (this.j === pos.j) {
+        return Math.abs(pos.i - this.i);
+      } else {
+        throw new Error('Cant measure diagonal distances');
+      }
     };
 
     Position.prototype.move = function(dir) {
@@ -334,14 +352,32 @@
       return pos.j * this.width + pos.i;
     };
 
+    Grid.prototype.up = function(pos) {
+      return this.cells[this.positionToIndex(pos) - this.width];
+    };
+
+    Grid.prototype.right = function(pos) {
+      return this.cells[this.positionToIndex(pos) + 1];
+    };
+
+    Grid.prototype.down = function(pos) {
+      return this.cells[this.positionToIndex(pos) + this.width];
+    };
+
+    Grid.prototype.left = function(pos) {
+      return this.cells[this.positionToIndex(pos) - 1];
+    };
+
     Grid.prototype.near = function(pos) {
-      var k;
-      k = this.positionToIndex(pos);
-      return new Directions(this.cells[k - this.width], this.cells[k + 1], this.cells[k + this.width], this.cells[k - 1]);
+      return new Directions(this.up(pos), this.right(pos), this.down(pos), this.left(pos));
     };
 
     Grid.prototype.set = function(c) {
       return this.cells[this.positionToIndex(c.pos)] = c;
+    };
+
+    Grid.prototype.get = function(pos) {
+      return this.cells[this.positionToIndex(pos)];
     };
 
     Grid.prototype.remove = function(c) {
@@ -351,6 +387,22 @@
       c.rect.remove();
       this.cells[k] = void 0;
       return console.log("Digging " + k);
+    };
+
+    Grid.prototype.inside = function(pos) {
+      var _ref, _ref2;
+      if ((0 < (_ref = pos.i) && _ref < this.width)) {
+        if ((0 < (_ref2 = pos.j) && _ref2 < this.height)) true;
+      }
+      return false;
+    };
+
+    Grid.prototype.surface = function(pos) {
+      if (this.down(pos) != null) {
+        return pos;
+      } else {
+        return this.surface(pos.down());
+      }
     };
 
     Grid.prototype.parse = function(grid) {
@@ -400,7 +452,10 @@
       this.pos = pos;
       this.world = world;
       this.postAct = __bind(this.postAct, this);
+      this.fall = __bind(this.fall, this);
+      this.circleAttrs = __bind(this.circleAttrs, this);
       this.world.players.push(this);
+      this.grid = this.world.grid;
       this.acting = false;
       this.availableActions = Directions.undef();
       this.updateAvailableActions();
@@ -424,20 +479,38 @@
     };
 
     Miner.prototype.act = function(dir) {
-      if (!this.acting) {
+      if (!(this.acting || !(this.availableActions[dir] != null))) {
         this.acting = true;
         return this.availableActions[dir]["do"](dir);
       }
     };
 
+    Miner.prototype.fall = function(cb) {
+      var a, attr;
+      if (this.grid.down(this.pos) == null) {
+        console.log("falling!");
+        attr = this.circle.attr();
+        this.pos = this.grid.surface(this.pos);
+        a = this.circleAttrs();
+        attr.cx = a.x;
+        attr.cy = a.y;
+        this.circle.animate(attr, 200, 'bounce', cb());
+      }
+      return cb();
+    };
+
     Miner.prototype.postAct = function() {
-      this.acting = false;
-      return this.updateAvailableActions();
+      var _this = this;
+      return this.fall(function() {
+        _this.acting = false;
+        return _this.updateAvailableActions();
+      });
     };
 
     Miner.prototype.updateAvailableActions = function() {
       var cell, dir, nearCells, _ref, _results;
-      nearCells = this.world.grid.near(this.pos);
+      this.availableActions = Directions.undef();
+      nearCells = this.grid.near(this.pos);
       _ref = nearCells.all();
       _results = [];
       for (dir in _ref) {
@@ -445,7 +518,11 @@
         if (cell != null ? cell.diggable() : void 0) {
           _results.push(this.availableActions[dir] = this.digAction(cell));
         } else {
-          _results.push(this.availableActions[dir] = this.moveAction(cell));
+          if (dir !== 'up') {
+            _results.push(this.availableActions[dir] = this.moveAction(cell));
+          } else {
+            _results.push(void 0);
+          }
         }
       }
       return _results;
@@ -457,7 +534,7 @@
       return a = {
         name: 'dig',
         "do": function(dir) {
-          _this.world.grid.remove(cell);
+          _this.grid.remove(cell);
           return _this.postAct();
         }
       };
@@ -527,7 +604,7 @@
       viewportBounds = new Position(viewportWidth, viewportHeight);
       this.paper = Raphael("canvas", viewportBounds.x(), viewportBounds.y());
       this.world = new World(new Grid(gridWidth, gridHeight));
-      sample_grid = ['s', 's', 's', '_', 's', 's', 's', 's', 's', 'e', 'e', 's', '_', 's', 'e', 'h', 'h', 's', 'h', 'e', 'e', '_', 'e', 'e', 'e', 'h', 'e', 'e', 'e', 'e', '_', 'e', 'e', 'e', 'e', 'e', 'm', 'm', 'm', '_', 'e', 'm', 'm', 'e', 'e', 'h', 'h', 'm', '_', 'e', 'h', 'm', 'e', 'e'];
+      sample_grid = ['s', 's', 's', '_', 's', 's', 's', 's', 's', 'e', 'e', 's', '_', 's', 'e', 'h', 'h', 's', 'h', 'e', 'e', '_', 'e', 'e', 'e', 'h', 'e', 'e', 'e', 'e', '_', 'e', 'e', 'e', 'e', 'e', 'm', 'm', 'm', '_', 'e', 'm', 'm', 'e', 'e', 'h', 'h', 'm', 'm', 'e', 'h', 'm', 'e', 'e'];
       this.world.grid.parse(sample_grid);
       this.world.draw(this.paper);
       return this.joinGame();
