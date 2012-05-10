@@ -81,20 +81,22 @@
 (this.require.define({
   "application": function(exports, require, module) {
     (function() {
-  var AirCell, Application, Cell, Directions, EarthCell, Grid, HardEarthCell, MetalCell, MineCell, Miner, Position, Router, SoftEarthCell, World, app, cellSize, gridHeight, gridWidth, viewportHeight, viewportWidth,
+  var AirCell, Application, BoundaryCell, Cell, Directions, EarthCell, Grid, HardEarthCell, MetalCell, Miner, Position, Router, SoftEarthCell, World, app, cellSize, gridHeight, gridWidth, map, viewportHeight, viewportWidth,
     __hasProp = Object.prototype.hasOwnProperty,
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor; child.__super__ = parent.prototype; return child; },
     __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
 
   Router = require('lib/router');
 
-  gridWidth = 9;
+  map = require('map');
 
-  gridHeight = 7;
+  gridWidth = 114;
 
-  viewportWidth = 9;
+  gridHeight = 27;
 
-  viewportHeight = 6;
+  viewportWidth = gridWidth;
+
+  viewportHeight = gridHeight + 1;
 
   cellSize = 40;
 
@@ -236,25 +238,6 @@
 
   })(Cell);
 
-  MineCell = (function(_super) {
-
-    __extends(MineCell, _super);
-
-    function MineCell() {
-      MineCell.__super__.constructor.apply(this, arguments);
-    }
-
-    MineCell.prototype.draw = function(paper) {
-      MineCell.__super__.draw.call(this, paper);
-      return this.rect.attr('fill', '#391919');
-    };
-
-    MineCell.prototype.toughness = 0;
-
-    return MineCell;
-
-  })(Cell);
-
   SoftEarthCell = (function(_super) {
 
     __extends(SoftEarthCell, _super);
@@ -331,11 +314,31 @@
 
   })(Cell);
 
+  BoundaryCell = (function(_super) {
+
+    __extends(BoundaryCell, _super);
+
+    function BoundaryCell() {
+      BoundaryCell.__super__.constructor.apply(this, arguments);
+    }
+
+    BoundaryCell.prototype.draw = function(paper) {
+      BoundaryCell.__super__.draw.call(this, paper);
+      return this.rect.attr('fill', '#000');
+    };
+
+    BoundaryCell.prototype.toughness = 0;
+
+    return BoundaryCell;
+
+  })(Cell);
+
   Grid = (function() {
 
     function Grid(width, height) {
       this.width = width;
       this.height = height;
+      this.heightWithSky = this.height + 1;
       this.bounds = new Position(this.width + 1, this.height + 1);
       this.sky = new Position(this.width + 1, 1);
       this.cells = [];
@@ -389,14 +392,6 @@
       return console.log("Digging " + k);
     };
 
-    Grid.prototype.inside = function(pos) {
-      var _ref, _ref2;
-      if ((0 < (_ref = pos.i) && _ref < this.width)) {
-        if ((0 < (_ref2 = pos.j) && _ref2 < this.height)) true;
-      }
-      return false;
-    };
-
     Grid.prototype.surface = function(pos) {
       if (this.down(pos) != null) {
         return pos;
@@ -406,27 +401,29 @@
     };
 
     Grid.prototype.parse = function(grid) {
-      var end, init, k, _results;
-      if (grid.length !== this.width * (this.height - 1)) {
+      var k, kw, _ref, _results;
+      if (grid.length !== this.width * this.height) {
         throw new Error('Invalid grid size (input doesnt need first air row)');
       }
       console.log("parsing " + grid.length + " cells");
-      init = this.width;
-      end = grid.length + this.width;
       _results = [];
-      for (k = init; init <= end ? k < end : k > end; init <= end ? k++ : k--) {
+      for (k = 0, _ref = grid.length; 0 <= _ref ? k < _ref : k > _ref; 0 <= _ref ? k++ : k--) {
+        kw = k + this.width;
         switch (grid[k]) {
+          case '#':
+            _results.push(this.set(new BoundaryCell(this.indexToPosition(kw))));
+            break;
           case 's':
-            _results.push(this.set(new SoftEarthCell(this.indexToPosition(k))));
+            _results.push(this.set(new SoftEarthCell(this.indexToPosition(kw))));
             break;
           case 'e':
-            _results.push(this.set(new EarthCell(this.indexToPosition(k))));
+            _results.push(this.set(new EarthCell(this.indexToPosition(kw))));
             break;
           case 'h':
-            _results.push(this.set(new HardEarthCell(this.indexToPosition(k))));
+            _results.push(this.set(new HardEarthCell(this.indexToPosition(kw))));
             break;
           case 'm':
-            _results.push(this.set(new MetalCell(this.indexToPosition(k))));
+            _results.push(this.set(new MetalCell(this.indexToPosition(kw))));
             break;
           default:
             _results.push(void 0);
@@ -515,8 +512,12 @@
       _results = [];
       for (dir in _ref) {
         cell = _ref[dir];
-        if (cell != null ? cell.diggable() : void 0) {
-          _results.push(this.availableActions[dir] = this.digAction(cell));
+        if (cell != null) {
+          if (cell.diggable()) {
+            _results.push(this.availableActions[dir] = this.digAction(cell));
+          } else {
+            _results.push(void 0);
+          }
         } else {
           if (dir !== 'up') {
             _results.push(this.availableActions[dir] = this.moveAction(cell));
@@ -600,12 +601,11 @@
     Application.prototype.player = void 0;
 
     Application.prototype.initialize = function() {
-      var sample_grid, viewportBounds;
+      var viewportBounds;
       viewportBounds = new Position(viewportWidth, viewportHeight);
       this.paper = Raphael("canvas", viewportBounds.x(), viewportBounds.y());
       this.world = new World(new Grid(gridWidth, gridHeight));
-      sample_grid = ['s', 's', 's', '_', 's', 's', 's', 's', 's', 'e', 'e', 's', '_', 's', 'e', 'h', 'h', 's', 'h', 'e', 'e', '_', 'e', 'e', 'e', 'h', 'e', 'e', 'e', 'e', '_', 'e', 'e', 'e', 'e', 'e', 'm', 'm', 'm', '_', 'e', 'm', 'm', 'e', 'e', 'h', 'h', 'm', 'm', 'e', 'h', 'm', 'e', 'e'];
-      this.world.grid.parse(sample_grid);
+      this.world.grid.parse(map.split(''));
       this.world.draw(this.paper);
       return this.joinGame();
     };
@@ -678,6 +678,16 @@
     (function() {
 
 
+
+}).call(this);
+
+  }
+}));
+(this.require.define({
+  "map": function(exports, require, module) {
+    (function() {
+
+  module.exports = "ssss#ssssssseeeessssssssssseehssssssssssssssss_sssssssssssssssssssssssseeessssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssseeeeeehssssssssssss_sssssssssssssshhsssssssssssssssssssssssssssssssssssssseeeeeeeeessssssssssssseeessssssssssssseeeeeeesssseeeeeeeeee___essssssssssssshsssssssssssssssssssseeeeheeeeeeeeeeeeeeeeeeessssssssssssssssssssssssssssssssssshhhhhhsseeeeeeeee_ssssssssssssssshhsssssssssssssssssssssssssssssssssssssssssseeeeeessssssssshhhhheeesssssssseeeeeeeeeeeeeeeeeeeeess_sssssssssmsssseehssssssssssssssssssssssssssssssssssssssssseeeeeesssssssssssssseeesssssssssseeeheeeeeeeessssssssss_ssssssssssseeeeessssssseeeeessssssmssssssssshhhhhhssssssssssseeessshhssssssssssssssssssseemeeeeeeeeesssssssssssss______sssseeeeeessssssssssssssssssseeeeesssssssshhhssssssssssssseesshhhhsssssssssssssssseeeeeeeeeeesssssssssssssssssss_sssssssssssssssssssssssssssssssssssseeeesssseehhhhhhssssssssssshhhheeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeees_sssssseeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeheeeehhhhhhhhhhhhhhhhhhhhhhhhhhhhhheeeeeeeheeeeeeeeeeeeeeeeemeeeehheeeeeeessshssssssseeeeeeeeeeeeeeeeeemeeeemmeeeeeeeeeeeeeeeeeeeeeeehhhheeeeeeeehhhhhhhhheeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeesssssseeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeehhheeeeeeeeeeeeehhhhheeeeessssssssssssssssssssseeeesssssseeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeheeeeeeeeehhhheeeeeeeeeeeeeeehhhheeeeeeeeeeeeeeeeeeeemeeeeeeeeeeeeeeehhhhhhhhhhhhheeeeeeeeeeeeeeeeeeeeeeeeeehhhhhhheeeeehhhheeeeeeeeeeeeeeeeeehhhhhhhhheeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeehhhhhhheeeeeeeeeeeeeeeeeeeeeeeeeehhhhhheeeeehhhhheeeeeeeeeeeeehhhhhhheeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeehhheeeeeeeeeheeeemeeeeeeeeeeeeeeeeeeehhheeeeeeeeeeeeeheeehhhmhhheeeeeeeeeeehhhheeeeeeeeeeehhhhhhhhhhhhhhmhhhhhhhhhhhhheeeeeeeeeeeeeeeeeeeeeeeeeeeehhhhhhhehhhhhhhhhhhhheeeeeeeehhhhhhhhssshhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhheeeeeeeehhhhhhhhhhhhhhhhhhhhhhhhheehhhhhmhheeeeeeehhhhhhhhhhhhhhhhhhhhhhsssshhhhhhhhhhhhhhhhhhhhsssshhhhhhhhhhhhheeeeehhhmhhhhhhhhhhhhhhhhhhhhhhhhheeeeehhheeeeehhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhmmmmmeeeehhhhhhhhhhhhhhhssshhhhhhhhheeehhhhhhhhhhhhhhhhmhhhhhhhhhhhhhhhheeeeeeeehhmmmmmmmmmmmmmmmmmmhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhheeeeehhhhhhhhhhhhhhhhhhhhhhhmmmmmmmmmmmmmmmmmmmmmmmmmmmmmhhhhhhhhhhhhhhmmmmmmmmmhhhhhhhhhhhhhhhheeeeeeeeeeeeeeeeeeehhhhhhhhhhhhhhhhhhhhhhhhhmmhhhhhhhhhhhhhhhhhhhhhmmmmmmmmmmmmhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhmssssmmmmmmmmmhhhhhhhhhhhhhhhhmmmmmmmmmmhhhhhhhhhhhhmhhhhhhhhhhhhhmmhshhhhhhhmhhhhhhhhhhhhhhmhhhhhhhhhhhhhhhmhhhhhssshhhhmmhhhhhhhhhhhhhhhhhmmmmmmmhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhmmemhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhheeeeeehhhhhhhhhhhhhhhhhhhhhhhhhhmmmmmmmmmmmmmssssshhhmmmmmmmmmmmhhhhhmmmmmmmmeeeeemmmmmmmmmmmmmmmmhmmmmmmmmmmmmmmmmmmeeeesssmmmmmmmmmmmmmmmmmmmeeeeemmmmmmmmmmmmmssssssssshhhhhhmmmmmhhhhhmmmmeeeeeeeemmmmmhmmmmmmmmmssseeemmmmmmmmmmhmmmmmmmssssssseeemmmmmmmmmmmeeesssssseeemmmmmmmmmhhhhhhssssssmmmmmeeeeeeeeeeeeemmmmmmmmmmmmhhhhhhheeeeeesmmmmmmmmmmmmhmmmmmmmmmeeeeehhmmmm";
 
 }).call(this);
 

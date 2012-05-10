@@ -1,9 +1,10 @@
 Router = require 'lib/router'
+map = require 'map'
 
-gridWidth = 9
-gridHeight = 7
-viewportWidth = 9
-viewportHeight = 6
+gridWidth = 114
+gridHeight = 27
+viewportWidth = gridWidth
+viewportHeight = gridHeight+1
 cellSize = 40
 
 # looking upside down?
@@ -13,7 +14,7 @@ cellSize = 40
 # k is for indexes
 
 # todo
-# available actions bug
+# falling acceleration
 # add testing capabilities
 # world has bounds (create undiggable material)
 # refactor & frameworkike the actions, postactions, etc
@@ -100,13 +101,6 @@ class AirCell extends Cell
 
   toughness: 0
 
-class MineCell extends Cell
-  draw: (paper) ->
-    super paper
-    @rect.attr 'fill', '#391919'
-
-  toughness: 0
-
 class SoftEarthCell extends Cell
   draw: (paper) ->
     super paper
@@ -135,10 +129,18 @@ class MetalCell extends Cell
 
   toughness: 5
 
+class BoundaryCell extends Cell
+  draw: (paper) ->
+    super paper
+    @rect.attr 'fill', '#000'
+
+  toughness: 0
+
 class Grid
   # undefined cells are just air
-  # width and height considering the first air row
+  # width and height just consider underground terrain
   constructor: (@width, @height) ->
+    @heightWithSky = @height + 1
     @bounds = new Position @width+1, @height+1
     @sky = new Position @width+1, 1
     @cells = []
@@ -182,12 +184,6 @@ class Grid
 
     console.log "Digging #{k}"
 
-  inside: (pos) ->
-    if 0 < pos.i < @width
-      if 0 < pos.j < @height
-        true
-    false
-
   # finds the next solid surface (an empty cell above a defined cell) down
   # from the given position.
   # The result is therefor a Position!
@@ -198,21 +194,19 @@ class Grid
       @surface pos.down()
 
   parse: (grid) ->
-    if grid.length isnt @width * (@height - 1)
+    if grid.length isnt @width * @height
       throw new Error 'Invalid grid size (input doesnt need first air row)'
 
     console.log "parsing #{grid.length} cells"
 
-    # First row is only air
-    init = @width
-    end = grid.length + @width
-
-    for k in [init...end]
+    for k in [0...grid.length]
+      kw = k + @width
       switch grid[k]
-        when 's' then @set new SoftEarthCell @indexToPosition k
-        when 'e' then @set new EarthCell @indexToPosition k
-        when 'h' then @set new HardEarthCell @indexToPosition k
-        when 'm' then @set new MetalCell @indexToPosition k
+        when '#' then @set new BoundaryCell @indexToPosition kw
+        when 's' then @set new SoftEarthCell @indexToPosition kw
+        when 'e' then @set new EarthCell @indexToPosition kw
+        when 'h' then @set new HardEarthCell @indexToPosition kw
+        when 'm' then @set new MetalCell @indexToPosition kw
 
   draw: (paper) ->
     @cells.map (c) =>
@@ -280,8 +274,9 @@ class Miner
     #console.log nearCells
 
     for dir, cell of nearCells.all()
-      if cell?.diggable()
-        @availableActions[dir] = @digAction cell
+      if cell?
+        if cell.diggable()
+          @availableActions[dir] = @digAction cell       
       else
         if dir isnt 'up'
           @availableActions[dir] = @moveAction cell
@@ -336,15 +331,7 @@ class Application
     @paper = Raphael "canvas", viewportBounds.x(), viewportBounds.y()
 
     @world = new World new Grid gridWidth, gridHeight
-    sample_grid = [
-      's', 's', 's', '_', 's', 's', 's', 's', 's'
-      'e', 'e', 's', '_', 's', 'e', 'h', 'h', 's'
-      'h', 'e', 'e', '_', 'e', 'e', 'e', 'h', 'e'
-      'e', 'e', 'e', '_', 'e', 'e', 'e', 'e', 'e'
-      'm', 'm', 'm', '_', 'e', 'm', 'm', 'e', 'e'
-      'h', 'h', 'm', 'm', 'e', 'h', 'm', 'e', 'e'
-    ]
-    @world.grid.parse sample_grid
+    @world.grid.parse map.split ''
     @world.draw @paper
 
     #console.log @world.grid.cells[10]
