@@ -3,12 +3,30 @@
   "description": "An awesome real time game",
   "version": "0.1.0",
   "author": "Christian Berkhoff <christian@berkhoff.cl>",
-  "private": true,
-  "engines": { "node": ">= 0.6.0" },
+  "engines": {
+    "node": "0.6.x",
+    "npm":  "1.0.x"
+  },
+  "scripts": {
+    "start": "brunch watch --server"
+  },
   "dependencies": {
     "express": "2.5.9",
     "coffee-script": "1.3.1",
-    "connect-assets": "2.1.9",
-    "eco": "1.1.0-rc-3"
+
+    "javascript-brunch": "1.0.x || 1.1.x",
+    "coffee-script-brunch": "1.0.x || 1.1.x",
+
+    "css-brunch": "1.0.x || 1.1.x",
+    "stylus-brunch": "1.0.x || 1.1.x",
+
+    "handlebars-brunch": "1.0.x || 1.1.x",
+
+    "uglify-js-brunch": "1.0.x || 1.1.x",
+    "clean-css-brunch": "1.0.x || 1.1.x"
+  },
+  "devDependencies": {
+    "mocha": "0.14.0",
+    "expect.js": "0.1.2"
   }
 }
